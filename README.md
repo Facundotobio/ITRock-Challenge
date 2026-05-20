@@ -126,3 +126,32 @@ curl -X DELETE https://localhost:7271/api/v1/tasks/TU_GUID_AQUI -H "Authorizatio
 
 6. Importar Tareas Externas (POST /api/v1/tasks/import)
 curl -X POST https://localhost:7271/api/v1/tasks/import -H "Authorization: Bearer INYECTAR_TOKEN"
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+## Pruebas de Integración (Insomnia / Postman)
+
+Para facilitar la evaluación y auditoría de los endpoints expuestos en producción, se ha adjuntado una colección de pruebas lista para usar en la raíz del proyecto: 
+`ITRockChallenge_Insomnia_Collection.json`
+
+Esta colección cuenta con variables globales de entorno y encadenamiento automatizado de tokens de autenticación.
+
+### Pasos para Importar y Utilizar la Colección:
+
+1. **Importar el archivo:**
+   * Abrí **Insomnia** (o Postman).
+   * Hacé clic en el botón de **Import** (o *Preferences > Data > Import Data*).
+   * Seleccioná el archivo `ITRockChallenge_Insomnia_Collection.json` de la raíz del proyecto.
+
+2. **Configurar el Entorno (Environment):**
+   * Al importar, se creará el entorno base automáticamente. Asegurate de que la variable `base_url` apunte correctamente a nuestro servicio web en producción:
+     `https://itrock-challenge.onrender.com`
+
+3. **Secuencia de Pruebas Automatizada:**
+   * **Paso 1 - Login (`1. Authentication`):** Ejecutá en primer lugar el request `POST Login - Success` con las credenciales estáticas preconfiguradas (`admin` / `password123`).
+      Al recibir la respuesta `200 OK`, un tag dinámico capturará el token JWT de forma automática.
+   * **Paso 2 - CRUD (`2. Tasks CRUD`):** Ya podés ejecutar los endpoints de obtener, crear, actualizar o borrar tareas. No es necesario copiar y pegar el token a mano;
+      viajará inyectado transparentemente como cabecera `Bearer` gracias al tag dinámico.
+   * **Paso 3 - Integración Externa (`3. External Integration`):** Ejecutá el endpoint de importación (`POST Import External Tasks`).
+      Este servicio se comunicará con la API externa de JSONPlaceholder de forma invisible, procesará las primeras 5 tareas y las guardará en la base de datos PostgreSQL de producción. 
+      Podés verificar el impacto volviendo a ejecutar el listado completo de tareas.

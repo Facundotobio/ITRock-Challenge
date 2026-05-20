@@ -21,7 +21,11 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddHttpClient();
 builder.Services.AddHttpClient<IJsonPlaceholderClient, JsonPlaceholderClient>(client =>
 {
-    client.BaseAddress = new Uri("https://jsonplaceholder.typicode.com/");
+    // Lee la URL desde el appsettings
+    var baseUrl = builder.Configuration["JsonPlaceholderSettings:BaseUrl"]
+                  ?? "https://jsonplaceholder.typicode.com";
+
+    client.BaseAddress = new Uri(baseUrl);
 })
 .AddStandardResilienceHandler();
 
@@ -76,22 +80,22 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
+// 1. Swagger se ejecuta SIEMPRE (tanto en Desarrollo como en Producción)
+app.UseSwagger();
+app.UseSwaggerUI(options =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(options =>
+    var descriptions = app.DescribeApiVersions();
+    foreach (var description in descriptions)
     {
-        var descriptions = app.DescribeApiVersions();
-        foreach (var description in descriptions)
-        {
-            options.SwaggerEndpoint(
-                $"/swagger/{description.GroupName}/swagger.json",
-                $"ITRockChallenge API {description.GroupName.ToUpperInvariant()}"
-            );
-        }
-    });
-}
-else
+        options.SwaggerEndpoint(
+            $"/swagger/{description.GroupName}/swagger.json",
+            $"ITRockChallenge API {description.GroupName.ToUpperInvariant()}"
+        );
+    }
+});
+
+// 2. Control condicional exclusivo para la redirección HTTPS
+if (!app.Environment.IsDevelopment())
 {
     // Solo forzamos HTTPS en producción (Render), NO en el Docker local
     app.UseHttpsRedirection();
