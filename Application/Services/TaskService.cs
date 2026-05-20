@@ -41,13 +41,15 @@ namespace ITRockChallenge.Application.Services
             // FILTRO: Rango de fechas (Desde)
             if (fromDate.HasValue)
             {
-                query = query.Where(t => t.CreatedAt >= fromDate.Value);
+                var utcFromDate = DateTime.SpecifyKind(fromDate.Value, DateTimeKind.Utc);
+                query = query.Where(t => t.CreatedAt >= utcFromDate);
             }
 
             // FILTRO: Rango de fechas (Hasta)
             if (toDate.HasValue)
             {
-                query = query.Where(t => t.CreatedAt <= toDate.Value);
+                var utcToDate = DateTime.SpecifyKind(toDate.Value, DateTimeKind.Utc).Date.AddDays(1).AddTicks(-1);
+                query = query.Where(t => t.CreatedAt <= utcToDate);
             }
 
             var totalRecords = await query.CountAsync();
