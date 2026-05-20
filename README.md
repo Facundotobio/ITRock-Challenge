@@ -155,3 +155,67 @@ Esta colección cuenta con variables globales de entorno y encadenamiento automa
    * **Paso 3 - Integración Externa (`3. External Integration`):** Ejecutá el endpoint de importación (`POST Import External Tasks`).
       Este servicio se comunicará con la API externa de JSONPlaceholder de forma invisible, procesará las primeras 5 tareas y las guardará en la base de datos PostgreSQL de producción. 
       Podés verificar el impacto volviendo a ejecutar el listado completo de tareas.
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+##  Paginación en Listado de Tareas (`GET /tasks`)
+
+Para garantizar el rendimiento de la base de datos, el endpoint de obtención de tareas implementa Paginación del lado del Servidor a través de query parameters opcionales.
+
+La consulta se procesa de forma eficiente directamente en PostgreSQL utilizando operadores de evaluación diferida (`Skip` y `Take`), evitando la carga masiva de registros en memoria.
+
+## Parámetros de Consulta (Query Params)
+
+Al realizar la petición, podés adjuntar los siguientes parámetros opcionales en la URL:
+
+| Parámetro | Tipo  | Descripción                                 | Valor por Defecto |
+======================================================================================
+| `page`    | `int` | Número de la página que se desea recuperar. | `1`               |
+| `pageSize`| `int` | Cantidad máxima de registros por página.    | `10`              |
+
+## Estructura de la Respuesta
+
+El endpoint retorna un objeto estructurado que incluye la metadata necesaria para que el frontend pueda construir controles de paginación dinámicos:
+
+json:
+{
+  "data": [
+    {
+      "id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+      "title": "Ejemplo de tarea paginada",
+      "description": "Esta es una descripción de prueba",
+      "completed": false,
+      "createdAt": "2026-05-20T14:30:00Z"
+    }
+  ],
+  "pageNumber": 1,
+  "pageSize": 1,
+  "totalRecords": 45,
+  "totalPages": 5
+}
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+## Filtros Avanzados Dinámicos en Listado de Tareas (`GET /tasks`)
+
+El endpoint permite combinar los siguientes filtros opcionales para segmentar los resultados de manera precisa:
+
+| Parámetro  | Tipo      | Descripción                                                                                       | Ejemplo               |
+=====================================================================================================================================================
+| `completed`| `bool`    | Filtra las tareas según su estado (`true` para completadas, `false` para pendientes).             | `?completed=false`    |
+| `search`   | `string`  | Texto de búsqueda libre. Evalúa coincidencias en **título** o **descripción** (Case-Insensitive). | `?search=Render`      |
+| `fromDate` | `DateTime`| Limita los resultados a tareas creadas a partir de esta fecha (inclusive).                        | `?fromDate=2026-05-01`|
+| `toDate`   | `DateTime`| Limita los resultados a tareas creadas hasta esta fecha (inclusive).                              | `?toDate=2026-05-31`  |
+
+Eficiencia de Servidor: Los filtros son dinámicos. Si un parámetro se omite o viaja vacío, la API no lo incluye en la sentencia `WHERE` de SQL,
+optimizando los tiempos de respuesta del motor de base de datos.
+
+## Ejemplos de Combinación (Filtros + Paginación)
+
+Buscar tareas pendientes que contengan la palabra "desafio":
+    GET [https://itrock-challenge.onrender.com/api/v1/tasks?search=desafio&completed=false]
+
+Obtener la segunda página de tareas completadas creadas en mayo de 2026 (bloques de 5):
+    GET [https://itrock-challenge.onrender.com/api/v1/tasks?completed=true&fromDate=2026-05-01&toDate=2026-05-31&page=2&pageSize=5]
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

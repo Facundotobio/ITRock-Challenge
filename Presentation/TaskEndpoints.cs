@@ -20,18 +20,19 @@ public static class TaskEndpoints
             .RequireAuthorization();
 
         // GET /tasks
-        group.MapGet("", async (ITaskService taskService, HttpContext httpContext, [FromQuery] int? page, [FromQuery] int? pageSize) =>
+        group.MapGet("", async (ITaskService taskService, HttpContext httpContext, [FromQuery] int? page, [FromQuery] int? pageSize,
+            [FromQuery] bool? completed, [FromQuery] string? search, [FromQuery] DateTime? fromDate, [FromQuery] DateTime? toDate) =>
         {
             // Extraer el UserId del token JWT autenticado
             var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId)) return Results.Unauthorized();
 
-            // paginado
-            var result = await taskService.GetTasksByUserIdAsync(userId, page ?? 1, pageSize ?? 10);
+            // Llamar al servicio con toda la artillería de filtros
+            var result = await taskService.GetTasksByUserIdAsync(userId, page ?? 1, pageSize ?? 10, completed, search, fromDate, toDate);
 
             return Results.Ok(result);
         })
-        .WithName("GetPagedTasks")
+        .WithName("GetPagedAndFilteredTasks")
         .HasApiVersion(1, 0);
 
         // POST /tasks
