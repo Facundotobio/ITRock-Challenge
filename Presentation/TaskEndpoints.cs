@@ -1,6 +1,7 @@
 ﻿using Asp.Versioning;
 using ITRockChallenge.Application.Dtos;
 using ITRockChallenge.Application.Interfaces;
+using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
 namespace ITRockChallenge.Presentation;
@@ -19,15 +20,19 @@ public static class TaskEndpoints
             .RequireAuthorization();
 
         // GET /tasks
-        group.MapGet("/", async (ITaskService taskService, HttpContext httpContext) =>
+        group.MapGet("", async (ITaskService taskService, HttpContext httpContext, [FromQuery] int? page, [FromQuery] int? pageSize) =>
         {
+            // Extraer el UserId del token JWT autenticado
             var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId)) return Results.Unauthorized();
 
-            var tasks = await taskService.GetTasksByUserIdAsync(userId);
-            return Results.Ok(tasks);
+            // paginado
+            var result = await taskService.GetTasksByUserIdAsync(userId, page ?? 1, pageSize ?? 10);
+
+            return Results.Ok(result);
         })
-        .WithName("GetTasks");
+        .WithName("GetPagedTasks")
+        .HasApiVersion(1, 0);
 
         // POST /tasks
         group.MapPost("/", async (CreateTaskRequest request, ITaskService taskService, HttpContext httpContext) =>

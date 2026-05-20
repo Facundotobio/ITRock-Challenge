@@ -17,12 +17,28 @@ namespace ITRockChallenge.Application.Services
             _externalClient = externalClient;
         }
 
-        public async Task<IEnumerable<TaskResponse>> GetTasksByUserIdAsync(string userId)
+        public async Task<PagedResponse<TaskResponse>> GetTasksByUserIdAsync(string userId, int page, int pageSize)
         {
-            return await _context.Tasks
-                .Where(t => t.UserId == userId)
-                .Select(t => new TaskResponse(t.Id, t.Title, t.Description, t.Completed, t.CreatedAt))
+            page = page <= 0 ? 1 : page;
+            pageSize = pageSize <= 0 ? 10 : pageSize;
+
+            var query = _context.Tasks.Where(t => t.UserId == userId);
+
+            // total de registros en la DB
+            var totalRecords = await query.CountAsync();
+
+            // Paginado directo en la base de datos con Skip y Take
+            var tasks = await query
+                .OrderByDescending(t => t.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
+
+            // Mapeamos DTO de salida
+            var taskResponses = tasks.Select(t =>
+                new TaskResponse(t.Id, t.Title, t.Description, t.Completed, t.CreatedAt));
+
+            return new PagedResponse<TaskResponse>(taskResponses, page, pageSize, totalRecords);
         }
 
         public async Task<TaskResponse> CreateTaskAsync(CreateTaskRequest request, string userId)
