@@ -1,0 +1,14 @@
+# Configuración local con credenciales reales
+appsettings.json
+appsettings.Development.json
+
+# Permitir explícitamente el archivo de ejemplo
+!appsettings.Example.json
+
+# Secretos del entorno de contenedores
+.env
+
+.vs/
+bin/
+obj/
+*.user

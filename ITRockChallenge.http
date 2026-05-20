@@ -1,0 +1,6 @@
+@ITRockChallenge_HostAddress = http://localhost:5092
+
+GET {{ITRockChallenge_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
