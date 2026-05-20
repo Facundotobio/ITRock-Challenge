@@ -76,11 +76,39 @@ builder.Services.AddApiVersioning(options =>
 
 // GENERADOR DE SWAGGER
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    // Definir esquema de seguridad JWT Bearer
+    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Ingresá el token JWT de la siguiente manera: Bearer {tu_token}"
+    });
+
+    // Hace que Swagger aplique esta seguridad de forma global a los endpoints
+    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+        {
+            Reference = new Microsoft.OpenApi.Models.OpenApiReference
+            {
+                Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                Id = "Bearer"
+            }
+        },
+        Array.Empty<string>()
+        }
+    });
+});
 
 var app = builder.Build();
 
-// 1. Swagger se ejecuta SIEMPRE (tanto en Desarrollo como en Producción)
+// Swagger se ejecuta SIEMPRE (tanto en Desarrollo como en Producción)
 app.UseSwagger();
 app.UseSwaggerUI(options =>
 {
@@ -94,10 +122,10 @@ app.UseSwaggerUI(options =>
     }
 });
 
-// 2. Control condicional exclusivo para la redirección HTTPS
+// Control condicional exclusivo para redirección HTTPS
 if (!app.Environment.IsDevelopment())
 {
-    // Solo forzamos HTTPS en producción (Render), NO en el Docker local
+    // Solo forzamos HTTPS en producción, no en el Docker local
     app.UseHttpsRedirection();
 }
 
@@ -105,7 +133,7 @@ if (!app.Environment.IsDevelopment())
 app.UseAuthentication();
 app.UseAuthorization();
 
-// 7. REGISTRO DE ENDPOINTS MÍNIMALES
+// REGISTRO DE ENDPOINTS
 app.MapAuthEndpoints();
 app.MapTaskEndpoints();
 
