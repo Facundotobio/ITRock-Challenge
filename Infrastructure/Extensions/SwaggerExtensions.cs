@@ -6,7 +6,6 @@ namespace ITRockChallenge.Infrastructure.Extensions
     {
         public static IServiceCollection AddSwaggerConfiguration(this IServiceCollection services)
         {
-            //services.AddEndpointsApiExplorer();
             services.AddSwaggerGen(options =>
             {
                 options.SwaggerDoc("v1", new OpenApiInfo 

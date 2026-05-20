@@ -219,3 +219,19 @@ Obtener la segunda página de tareas completadas creadas en mayo de 2026 (bloque
     GET [https://itrock-challenge.onrender.com/api/v1/tasks?completed=true&fromDate=2026-05-01&toDate=2026-05-31&page=2&pageSize=5]
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+## Pruebas Unitarias con xUnit
+
+El proyecto cuenta con 23 pruebas unitarias que cubren la lógica de negocio, la persistencia de datos y el comportamiento de los endpoints de la API.
+
+## Cómo Ejecutar las Pruebas
+
+Para correr la suite de testing completa desde la consola, desde la raíz del proyecto ejecutá los siguientes comandos:
+
+1. Limpiar artefactos previos de compilación:
+   dotnet clean
+
+2. Ejecutar todos los tests:
+   dotnet test
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

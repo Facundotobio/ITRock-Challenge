@@ -21,7 +21,7 @@ namespace ITRockChallenge.Application.Services
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]!));
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            // Agregamos los Claims obligatorios para identificar al usuario en los endpoints
+            // Agregar los Claims obligatorios para identificar al usuario en los endpoints
             var claims = new[]
             {
             new Claim(ClaimTypes.NameIdentifier, userId),

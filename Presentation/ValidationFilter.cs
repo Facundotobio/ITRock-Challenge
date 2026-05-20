@@ -13,7 +13,7 @@ namespace ITRockChallenge.Presentation
 
         public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
         {
-            // Buscamos el DTO dentro de los argumentos de la petición HTTP
+            // Buscarel DTO dentro de los argumentos de la petición HTTP
             var argument = context.Arguments.FirstOrDefault(x => x is T) as T;
 
             if (argument == null)
@@ -21,12 +21,12 @@ namespace ITRockChallenge.Presentation
                 return Results.BadRequest(new { message = "El cuerpo de la solicitud no puede estar vacío." });
             }
 
-            // Ejecutamos la validación de forma asíncrona
+            // Ejecutar la validación de forma asíncrona
             var validationResult = await _validator.ValidateAsync(argument);
 
             if (!validationResult.IsValid)
             {
-                // Agrupamos los errores por propiedad para devolver un formato limpio y semántico
+                // Agrupar los errores por propiedad
                 var errors = validationResult.Errors
                     .GroupBy(e => e.PropertyName)
                     .ToDictionary(
@@ -34,11 +34,9 @@ namespace ITRockChallenge.Presentation
                         g => g.Select(e => e.ErrorMessage).ToArray()
                     );
 
-                // Genera un HTTP 400 con la estructura oficial de ValidationProblem
                 return Results.ValidationProblem(errors);
             }
 
-            // Si no hay errores, el pipeline continúa con el flujo normal hacia el servicio
             return await next(context);
         }
     }

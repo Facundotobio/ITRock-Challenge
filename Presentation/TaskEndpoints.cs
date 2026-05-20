@@ -27,7 +27,7 @@ public static class TaskEndpoints
             var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (string.IsNullOrEmpty(userId)) return Results.Unauthorized();
 
-            // Llamar al servicio con toda la artillería de filtros
+            // Llamar al servicio con la implementacion de los filtros
             var result = await taskService.GetTasksByUserIdAsync(userId, page ?? 1, pageSize ?? 10, completed, search, fromDate, toDate);
 
             return Results.Ok(result);

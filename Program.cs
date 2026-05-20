@@ -138,3 +138,5 @@ app.MapAuthEndpoints();
 app.MapTaskEndpoints();
 
 app.Run();
+
+public partial class Program { }

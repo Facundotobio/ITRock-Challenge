@@ -86,13 +86,13 @@ namespace ITRockChallenge.Application.Services
         {
             var task = await _context.Tasks.FindAsync(id);
 
-            // Si no existe, devolvemos null para que el endpoint maneje el 404
+            // Si no existe, devolver null para que el endpoint maneje el 404
             if (task == null) return null;
 
-            // Validamos propiedad (Ownership) antes de modificar nada
+            // Validar propiedad (Ownership) antes de modificar nada
             if (task.UserId != userId) return null;
 
-            // Actualización parcial (si vienen nulos en el request, mantenemos el valor actual)
+            // Actualización parcial (si vienen nulos en el request, mantener el valor actual)
             if (request.Title != null) task.Title = request.Title;
             if (request.Description != null) task.Description = request.Description;
             if (request.Completed != null) task.Completed = request.Completed.Value;
