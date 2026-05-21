@@ -2,6 +2,7 @@ using ITRockChallenge.Application.Dtos;
 using ITRockChallenge.Application.Interfaces;
 using ITRockChallenge.Application.Services;
 using ITRockChallenge.Infrastructure.Data;
+using ITRockChallenge.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -178,7 +179,7 @@ namespace ITRockChallenge.Tests
 
             // Instanciar servicio inyectándole los mocks
             var currentUserId = "user-123-facundo";
-            var taskService = new TaskService(context, mockExternalClient.Object);
+            var taskService = new TaskService(new EfTaskRepository(context), mockExternalClient.Object);
 
             // ACT
             var result = await taskService.ImportExternalTasksAsync(currentUserId);

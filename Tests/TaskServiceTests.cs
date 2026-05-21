@@ -3,6 +3,7 @@ using ITRockChallenge.Application.Interfaces;
 using ITRockChallenge.Application.Services;
 using ITRockChallenge.Domain;
 using ITRockChallenge.Infrastructure.Data;
+using ITRockChallenge.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Moq;
 using Xunit;
@@ -26,7 +27,7 @@ namespace ITRockChallenge.Tests
             // Arrange
             var dbContext = GetInMemoryDbContext();
             var mockExternalClient = new Mock<IJsonPlaceholderClient>();
-            var service = new TaskService(dbContext, mockExternalClient.Object);
+            var service = new TaskService(new EfTaskRepository(dbContext), mockExternalClient.Object);
             
             var request = new CreateTaskRequest("Test Title", "Test Description");
             var userId = "1";
@@ -58,7 +59,7 @@ namespace ITRockChallenge.Tests
             await dbContext.SaveChangesAsync();
 
             var mockExternalClient = new Mock<IJsonPlaceholderClient>();
-            var service = new TaskService(dbContext, mockExternalClient.Object);
+            var service = new TaskService(new EfTaskRepository(dbContext), mockExternalClient.Object);
 
             // Act
             var result = await service.GetTasksByUserIdAsync("1", 1, 10, null, null, null, null);
@@ -81,7 +82,7 @@ namespace ITRockChallenge.Tests
             using var context = new ApplicationDbContext(options);
             var mockExternalClient = new Mock<IJsonPlaceholderClient>();
 
-            var taskService = new TaskService(context, mockExternalClient.Object);
+            var taskService = new TaskService(new EfTaskRepository(context), mockExternalClient.Object);
 
             var nonExistentId = Guid.NewGuid();
             var request = new UpdateTaskRequest("Nuevo Titulo", "Nueva Desc", true);
@@ -118,7 +119,7 @@ namespace ITRockChallenge.Tests
             await context.SaveChangesAsync();
 
             var mockExternalClient = new Mock<IJsonPlaceholderClient>();
-            var taskService = new TaskService(context, mockExternalClient.Object);
+            var taskService = new TaskService(new EfTaskRepository(context), mockExternalClient.Object);
 
             // "user-atacante" intenta modificar la tarea del "user-verdadero"
             var request = new UpdateTaskRequest("Titulo Hackeado", "Desc Hackeada", true);
@@ -148,7 +149,7 @@ namespace ITRockChallenge.Tests
             using var context = new ApplicationDbContext(options);
             var mockExternalClient = new Mock<IJsonPlaceholderClient>();
 
-            var taskService = new TaskService(context, mockExternalClient.Object);
+            var taskService = new TaskService(new EfTaskRepository(context), mockExternalClient.Object);
 
             var nonExistentId = Guid.NewGuid();
 
@@ -184,7 +185,7 @@ namespace ITRockChallenge.Tests
             await context.SaveChangesAsync();
 
             var mockExternalClient = new Mock<IJsonPlaceholderClient>();
-            var taskService = new TaskService(context, mockExternalClient.Object);
+            var taskService = new TaskService(new EfTaskRepository(context), mockExternalClient.Object);
 
             // "user-atacante" intenta borrar la tarea ajena
             // ACT
@@ -224,7 +225,7 @@ namespace ITRockChallenge.Tests
                 .ReturnsAsync(fakeExternalTasks);
 
             var currentUserId = "user-facundo";
-            var taskService = new TaskService(context, mockExternalClient.Object);
+            var taskService = new TaskService(new EfTaskRepository(context), mockExternalClient.Object);
 
             // ACT
             var result = await taskService.ImportExternalTasksAsync(currentUserId);

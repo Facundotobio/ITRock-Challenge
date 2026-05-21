@@ -6,6 +6,7 @@ using ITRockChallenge.Application.Validators;
 using ITRockChallenge.Infrastructure;
 using ITRockChallenge.Infrastructure.Data;
 using ITRockChallenge.Infrastructure.Http;
+using ITRockChallenge.Infrastructure.Repositories;
 using ITRockChallenge.Presentation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -31,6 +32,7 @@ builder.Services.AddHttpClient<IJsonPlaceholderClient, JsonPlaceholderClient>(cl
 .AddStandardResilienceHandler();
 
 builder.Services.AddScoped<IJsonPlaceholderClient, JsonPlaceholderClient>();
+builder.Services.AddScoped<ITaskRepository, EfTaskRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
