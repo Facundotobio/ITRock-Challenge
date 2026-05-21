@@ -3,6 +3,7 @@ using FluentValidation;
 using ITRockChallenge.Application.Interfaces;
 using ITRockChallenge.Application.Services;
 using ITRockChallenge.Application.Validators;
+using ITRockChallenge.Infrastructure;
 using ITRockChallenge.Infrastructure.Data;
 using ITRockChallenge.Infrastructure.Http;
 using ITRockChallenge.Presentation;
@@ -30,6 +31,7 @@ builder.Services.AddHttpClient<IJsonPlaceholderClient, JsonPlaceholderClient>(cl
 .AddStandardResilienceHandler();
 
 builder.Services.AddScoped<IJsonPlaceholderClient, JsonPlaceholderClient>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 
@@ -106,7 +108,12 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
 var app = builder.Build();
+
+app.UseExceptionHandler();
 
 // Swagger se ejecuta SIEMPRE (tanto en Desarrollo como en Producción)
 app.UseSwagger();

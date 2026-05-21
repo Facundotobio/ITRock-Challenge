@@ -1,8 +1,9 @@
 ﻿using Asp.Versioning;
 using ITRockChallenge.Application.Dtos;
 using ITRockChallenge.Application.Interfaces;
+using ITRockChallenge.Presentation.Extensions;
+using ITRockChallenge.Presentation.Filters;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace ITRockChallenge.Presentation;
 
@@ -17,43 +18,31 @@ public static class TaskEndpoints
 
         var group = app.MapGroup("/api/v{version:apiVersion}/tasks")
             .WithApiVersionSet(apiVersionSet)
-            .RequireAuthorization();
+            .RequireAuthorization()
+            .AddEndpointFilter<AuthenticatedUserFilter>();
 
-        // GET /tasks
         group.MapGet("", async (ITaskService taskService, HttpContext httpContext, [FromQuery] int? page, [FromQuery] int? pageSize,
             [FromQuery] bool? completed, [FromQuery] string? search, [FromQuery] DateTime? fromDate, [FromQuery] DateTime? toDate) =>
         {
-            // Extraer el UserId del token JWT autenticado
-            var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId)) return Results.Unauthorized();
-
-            // Llamar al servicio con la implementacion de los filtros
-            var result = await taskService.GetTasksByUserIdAsync(userId, page ?? 1, pageSize ?? 10, completed, search, fromDate, toDate);
+            var result = await taskService.GetTasksByUserIdAsync(
+                httpContext.GetUserId(), page ?? 1, pageSize ?? 10, completed, search, fromDate, toDate);
 
             return Results.Ok(result);
         })
         .WithName("GetPagedAndFilteredTasks")
         .HasApiVersion(1, 0);
 
-        // POST /tasks
         group.MapPost("/", async (CreateTaskRequest request, ITaskService taskService, HttpContext httpContext) =>
         {
-            var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId)) return Results.Unauthorized();
-
-            var taskResponse = await taskService.CreateTaskAsync(request, userId);
+            var taskResponse = await taskService.CreateTaskAsync(request, httpContext.GetUserId());
             return Results.Created($"/tasks/{taskResponse.Id}", taskResponse);
         })
         .WithName("CreateTask")
         .AddEndpointFilter<ValidationFilter<CreateTaskRequest>>();
 
-        // PATCH /tasks/{id}
         group.MapPatch("/{id:guid}", async (Guid id, UpdateTaskRequest request, ITaskService taskService, HttpContext httpContext) =>
         {
-            var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId)) return Results.Unauthorized();
-
-            var updatedTask = await taskService.UpdateTaskAsync(id, request, userId);
+            var updatedTask = await taskService.UpdateTaskAsync(id, request, httpContext.GetUserId());
 
             if (updatedTask == null)
             {
@@ -65,13 +54,9 @@ public static class TaskEndpoints
         .WithName("UpdateTask")
         .AddEndpointFilter<ValidationFilter<UpdateTaskRequest>>();
 
-        // DELETE /tasks/{id}
         group.MapDelete("/{id:guid}", async (Guid id, ITaskService taskService, HttpContext httpContext) =>
         {
-            var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId)) return Results.Unauthorized();
-
-            var success = await taskService.DeleteTaskAsync(id, userId);
+            var success = await taskService.DeleteTaskAsync(id, httpContext.GetUserId());
 
             if (!success)
             {
@@ -82,25 +67,10 @@ public static class TaskEndpoints
         })
         .WithName("DeleteTask");
 
-        // POST /tasks/import
         group.MapPost("/import", async (ITaskService taskService, HttpContext httpContext) =>
         {
-            var userId = httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId)) return Results.Unauthorized();
-
-            try
-            {
-                var result = await taskService.ImportExternalTasksAsync(userId);
-                return Results.Ok(result);
-            }
-            catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException)
-            {
-                // Si Polly agotó los reintentos, devolvemos un error semántico controlado
-                return Results.Json(new
-                {
-                    error = "El servicio externo no responde tras múltiples reintentos. Intente más tarde."
-                }, statusCode: 502);
-            }
+            var result = await taskService.ImportExternalTasksAsync(httpContext.GetUserId());
+            return Results.Ok(result);
         })
         .WithName("ImportTasks");
     }

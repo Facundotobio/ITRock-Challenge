@@ -2,6 +2,7 @@ using ITRockChallenge.Application.Dtos;
 using ITRockChallenge.Application.Interfaces;
 using ITRockChallenge.Application.Services;
 using ITRockChallenge.Infrastructure.Data;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
@@ -422,11 +423,10 @@ namespace ITRockChallenge.Tests
             // Verificar que el código de estado sea el 502 Bad Gateway configurado en el catch
             Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
 
-            // Validar que el JSON devuelto contenga el mensaje exacto
-            var errorResponse = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
-            Assert.NotNull(errorResponse);
-            Assert.True(errorResponse.ContainsKey("error"));
-            Assert.Equal("El servicio externo no responde tras múltiples reintentos. Intente más tarde.", errorResponse["error"]);
+            var problemDetails = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+            Assert.NotNull(problemDetails);
+            Assert.Equal(502, problemDetails.Status);
+            Assert.Equal("El servicio externo no responde tras múltiples reintentos. Intente más tarde.", problemDetails.Detail);
         }
     }
 }

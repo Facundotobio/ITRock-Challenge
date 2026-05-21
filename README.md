@@ -220,6 +220,12 @@ Obtener la segunda página de tareas completadas creadas en mayo de 2026 (bloque
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+### Manejo Global de Errores
+Para proteger la integridad del servidor, se implementó la interfaz moderna `IExceptionHandler` de .NET.
+Centralización de Fallas: Cualquier excepción no controlada en la capa de servicios o infraestructura es interceptada automáticamente.
+Respuestas Estandarizadas: El cliente/frontend nunca recibe un error crudo ni el *stack trace* expuesto.
+Mapeo de Errores de Infraestructura: Si la API de terceros falla y la política de resiliencia de Polly agota sus reintentos, el manejador captura las excepciones de red (`HttpRequestException` / `TaskCanceledException`) y las traduce automáticamente en un código `502 Bad Gateway` con un mensaje controlado, previniendo la caída del servidor.
+
 ## Pruebas Unitarias con xUnit
 
 El proyecto cuenta con 23 pruebas unitarias que cubren la lógica de negocio, la persistencia de datos y el comportamiento de los endpoints de la API.
