@@ -1,5 +1,6 @@
 ﻿using ITRockChallenge.Application.Dtos;
 using ITRockChallenge.Application.Interfaces;
+using ITRockChallenge.Application.Mapping;
 using ITRockChallenge.Domain;
 
 namespace ITRockChallenge.Application.Services;
@@ -7,12 +8,12 @@ namespace ITRockChallenge.Application.Services;
 public class TaskService : ITaskService
 {
     private readonly ITaskRepository _taskRepository;
-    private readonly IJsonPlaceholderClient _externalClient;
+    private readonly ITaskImportService _taskImportService;
 
-    public TaskService(ITaskRepository taskRepository, IJsonPlaceholderClient externalClient)
+    public TaskService(ITaskRepository taskRepository, ITaskImportService taskImportService)
     {
         _taskRepository = taskRepository;
-        _externalClient = externalClient;
+        _taskImportService = taskImportService;
     }
 
     public async Task<PagedResponse<TaskResponse>> GetTasksByUserIdAsync(
@@ -24,8 +25,7 @@ public class TaskService : ITaskService
         var (tasks, totalRecords) = await _taskRepository.GetPagedByUserIdAsync(
             userId, page, pageSize, completed, search, fromDate, toDate);
 
-        var taskResponses = tasks.Select(t =>
-            new TaskResponse(t.Id, t.Title, t.Description, t.Completed, t.CreatedAt));
+        var taskResponses = tasks.Select(TaskMapper.ToResponse);
 
         return new PagedResponse<TaskResponse>(taskResponses, page, pageSize, totalRecords);
     }
@@ -41,15 +41,17 @@ public class TaskService : ITaskService
 
         var savedTask = await _taskRepository.AddAsync(newTask);
 
-        return MapToResponse(savedTask);
+        return TaskMapper.ToResponse(savedTask);
     }
 
     public async Task<TaskResponse?> UpdateTaskAsync(Guid id, UpdateTaskRequest request, string userId)
     {
         var task = await _taskRepository.FindByIdAsync(id);
 
-        if (task == null) return null;
-        if (task.UserId != userId) return null;
+        if (task == null || task.UserId != userId)
+        {
+            return null;
+        }
 
         if (request.Title != null) task.Title = request.Title;
         if (request.Description != null) task.Description = request.Description;
@@ -57,50 +59,23 @@ public class TaskService : ITaskService
 
         await _taskRepository.UpdateAsync(task);
 
-        return MapToResponse(task);
+        return TaskMapper.ToResponse(task);
     }
 
     public async Task<bool> DeleteTaskAsync(Guid id, string userId)
     {
         var task = await _taskRepository.FindByIdAsync(id);
 
-        if (task == null) return false;
-        if (task.UserId != userId) return false;
+        if (task == null || task.UserId != userId)
+        {
+            return false;
+        }
 
         await _taskRepository.DeleteAsync(task);
 
         return true;
     }
 
-    public async Task<ImportResponse> ImportExternalTasksAsync(string currentUserId)
-    {
-        var externalTasks = await _externalClient.GetTodosAsync();
-
-        var filteredTasks = externalTasks
-            .Where(t => t.UserId == 1)
-            .Take(5)
-            .ToList();
-
-        if (filteredTasks.Count == 0)
-        {
-            return new ImportResponse(0, Enumerable.Empty<TaskResponse>());
-        }
-
-        var importedTasks = filteredTasks.Select(extTask => new TodoTask
-        {
-            Title = extTask.Title,
-            Description = $"Importada externamente (External ID: {extTask.Id})",
-            Completed = extTask.Completed,
-            UserId = currentUserId
-        }).ToList();
-
-        await _taskRepository.AddRangeAsync(importedTasks);
-
-        var taskResponses = importedTasks.Select(MapToResponse);
-
-        return new ImportResponse(importedTasks.Count, taskResponses);
-    }
-
-    private static TaskResponse MapToResponse(TodoTask task) =>
-        new(task.Id, task.Title, task.Description, task.Completed, task.CreatedAt);
+    public Task<ImportResponse> ImportExternalTasksAsync(string currentUserId) =>
+        _taskImportService.ImportAsync(currentUserId);
 }

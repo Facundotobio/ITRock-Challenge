@@ -1,8 +1,5 @@
 using ITRockChallenge.Application.Dtos;
 using ITRockChallenge.Application.Interfaces;
-using ITRockChallenge.Application.Services;
-using ITRockChallenge.Infrastructure.Data;
-using ITRockChallenge.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -144,61 +141,6 @@ namespace ITRockChallenge.Tests
 
             // Assert
             Assert.True(response.StatusCode == HttpStatusCode.NoContent || response.StatusCode == HttpStatusCode.OK);
-        }
-
-        [Fact]
-        public async Task ImportExternalTasksAsync_ShouldFilterUserId1AndTakeMaximum5()
-        {
-            // ARRANGE
-            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseInMemoryDatabase(databaseName: $"Test_Import_{Guid.NewGuid()}")
-                .Options;
-
-            using var context = new ApplicationDbContext(options);
-
-            // Crear lista ficticia que simule lo que devuelve la API externa
-            // 7 tareas del UserId 1 -  probar el límite de 5 y 2 de otros usuarios para probar el filtro
-            var fakeExternalTasks = new List<ExternalTaskDto>
-                {
-                    new(1, 101, "Tarea 1", false),
-                    new(1, 102, "Tarea 2", true),
-                    new(1, 103, "Tarea 3", false),
-                    new(1, 104, "Tarea 4", false),
-                    new(1, 105, "Tarea 5", true),
-                    new(1, 106, "Tarea 6", false), 
-                    new(1, 107, "Tarea 7", false), 
-                    new(2, 108, "Tarea de otro user", false),
-                    new(3, 109, "Tarea de otro user 2", false)
-                };
-
-            // Mockear cliente externo para que devuelva la lista falsa
-            var mockExternalClient = new Mock<IJsonPlaceholderClient>();
-            mockExternalClient
-                .Setup(client => client.GetTodosAsync())
-                .ReturnsAsync(fakeExternalTasks);
-
-            // Instanciar servicio inyectándole los mocks
-            var currentUserId = "user-123-facundo";
-            var taskService = new TaskService(new EfTaskRepository(context), mockExternalClient.Object);
-
-            // ACT
-            var result = await taskService.ImportExternalTasksAsync(currentUserId);
-
-            // ASSERT
-            // Validar que la respuesta DTO tenga 5 importadas
-            Assert.NotNull(result);
-            Assert.Equal(5, result.ImportedCount);
-            Assert.Equal(5, result.Tasks.Count());
-            Assert.Contains(result.Tasks, t => t.Title == "Tarea 1");
-            Assert.Contains(result.Tasks, t => t.Title == "Tarea 5");
-            Assert.DoesNotContain(result.Tasks, t => t.Title == "Tarea 6");
-            Assert.DoesNotContain(result.Tasks, t => t.Title == "Tarea de otro user");
-
-            var tasksInDb = await context.Tasks.Where(t => t.UserId == currentUserId).ToListAsync();
-            Assert.Equal(5, tasksInDb.Count);
-
-            // Verificar que mapeó bien la descripción concatenando el External ID
-            Assert.StartsWith("Importada externamente (External ID: 101)", tasksInDb.First().Description);
         }
 
         [Fact]

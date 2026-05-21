@@ -19,20 +19,18 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// REGISTRO DE INYECCIÓN DE DEPENDENCIAS Y RESILIENCIA (POLLY)
-builder.Services.AddHttpClient();
+// BaseUrl (appsettings) + Polly
 builder.Services.AddHttpClient<IJsonPlaceholderClient, JsonPlaceholderClient>(client =>
 {
-    // Lee la URL desde el appsettings
     var baseUrl = builder.Configuration["JsonPlaceholderSettings:BaseUrl"]
                   ?? "https://jsonplaceholder.typicode.com";
 
-    client.BaseAddress = new Uri(baseUrl);
+    client.BaseAddress = new Uri(baseUrl.EndsWith('/') ? baseUrl : baseUrl + "/");
 })
 .AddStandardResilienceHandler();
 
-builder.Services.AddScoped<IJsonPlaceholderClient, JsonPlaceholderClient>();
 builder.Services.AddScoped<ITaskRepository, EfTaskRepository>();
+builder.Services.AddScoped<ITaskImportService, TaskImportService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
