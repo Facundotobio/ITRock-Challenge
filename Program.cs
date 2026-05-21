@@ -15,6 +15,24 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Logging: Configuración y canales de salida
+builder.Logging.ClearProviders();
+
+// Salida para Consola formateada como JSON estructurado
+builder.Logging.AddJsonConsole(options =>
+{
+    options.JsonWriterOptions = new System.Text.Json.JsonWriterOptions
+    {
+        Indented = true // JSON ordenado en desarrollo
+    };
+});
+
+// Salida para la ventana de Depuración
+builder.Logging.AddDebug();
+
+// Nivel mínimo de captura
+builder.Logging.SetMinimumLevel(LogLevel.Information);
+
 // REGISTRO DE INFRAESTRUCTURA - Conexión a PostgreSQL
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));

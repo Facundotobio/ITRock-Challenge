@@ -5,6 +5,7 @@ using ITRockChallenge.Domain;
 using ITRockChallenge.Infrastructure.Data;
 using ITRockChallenge.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -18,7 +19,7 @@ public class TaskServiceTests
             .Options);
 
     private static TaskService CreateTaskService(ApplicationDbContext context) =>
-        new(new EfTaskRepository(context), Mock.Of<ITaskImportService>());
+        new(new EfTaskRepository(context), Mock.Of<ITaskImportService>(), NullLogger<TaskService>.Instance);
 
     [Fact]
     public async Task CreateTaskAsync_CreatesAndReturnsTask()

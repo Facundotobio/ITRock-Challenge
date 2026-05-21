@@ -70,6 +70,9 @@ Cambiar obligatoriamente: clave JWT, credenciales de base de datos, usuario/cont
 13. Pruebas con xUnit:
     Tests con Moq: unitarios (`TaskService`, `TaskImportService`, `TokenService`) y de integración HTTP (`WebApplicationFactory` en endpoints de auth y tasks).
 
+14. Logging nativo por consola
+    Se usa el proveedor nativo `Microsoft.Extensions.Logging` con salida por consola y ventana de depuración.
+
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ## Instrucciones de Instalación y Ejecución Local
@@ -103,7 +106,7 @@ La API levantará en el puerto configurado en tu archivo launchSettings.json, po
 
 Si dispones de Docker instalado, puedes omitir la configuración local de la base de datos y compilar todo el ecosistema de la API y PostgreSQL en contenedores aislados.
 
-### Configuración del archivo `.env`
+## Configuración del archivo `.env`
 
 En la raíz del proyecto creá un archivo `.env`. `docker-compose.yml` lo consume para PostgreSQL, JWT y la URL de JSONPlaceholder.
 
@@ -186,7 +189,7 @@ curl -X POST https://localhost:7271/api/v1/tasks/import -H "Authorization: Beare
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-## Pruebas de Integración (Insomnia / Postman)
+## Colección de pruebas (Insomnia / Postman)
 
 Para facilitar la evaluación y auditoría de los endpoints expuestos en producción, se ha adjuntado una colección de pruebas lista para usar en la raíz del proyecto: 
 `ITRockChallenge.postman_collection.json.`

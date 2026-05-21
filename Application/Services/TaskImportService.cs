@@ -12,15 +12,19 @@ public class TaskImportService : ITaskImportService
 
     private readonly ITaskRepository _taskRepository;
     private readonly IJsonPlaceholderClient _externalClient;
+    private readonly ILogger<TaskImportService> _logger;
 
-    public TaskImportService(ITaskRepository taskRepository, IJsonPlaceholderClient externalClient)
+    public TaskImportService(ITaskRepository taskRepository, IJsonPlaceholderClient externalClient, ILogger<TaskImportService> logger)
     {
         _taskRepository = taskRepository;
         _externalClient = externalClient;
+        _logger = logger;
     }
 
     public async Task<ImportResponse> ImportAsync(string currentUserId)
     {
+        _logger?.LogInformation("Iniciando importación de tareas externas para UserId={UserId}", currentUserId);
+
         var externalTasks = await _externalClient.GetTodosAsync();
 
         var candidateTasks = externalTasks
@@ -28,8 +32,11 @@ public class TaskImportService : ITaskImportService
             .Take(MaxTasksToImport)
             .ToList();
 
+        _logger?.LogInformation("Tareas candidatas obtenidas: {Count}", candidateTasks.Count);
+
         if (candidateTasks.Count == 0)
         {
+            _logger?.LogWarning("No hay tareas candidatas para importar.");
             return new ImportResponse(0, Enumerable.Empty<TaskResponse>());
         }
 
@@ -39,8 +46,11 @@ public class TaskImportService : ITaskImportService
             .Where(t => !alreadyImportedIds.Contains(t.Id))
             .ToList();
 
+        _logger?.LogInformation("Tareas a importar tras filtrar ya importadas: {Count}", tasksToImport.Count);
+
         if (tasksToImport.Count == 0)
         {
+            _logger?.LogWarning("No hay tareas nuevas para importar para UserId={UserId}", currentUserId);
             return new ImportResponse(0, Enumerable.Empty<TaskResponse>());
         }
 
@@ -54,6 +64,8 @@ public class TaskImportService : ITaskImportService
         }).ToList();
 
         await _taskRepository.AddRangeAsync(importedTasks);
+
+        _logger?.LogInformation("Importación completada. Cantidad importada: {ImportedCount} para UserId={UserId}", importedTasks.Count, currentUserId);
 
         var taskResponses = importedTasks.Select(TaskMapper.ToResponse);
 

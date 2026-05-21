@@ -4,6 +4,7 @@ using ITRockChallenge.Application.Services;
 using ITRockChallenge.Infrastructure.Data;
 using ITRockChallenge.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
 
@@ -29,7 +30,9 @@ public class TaskImportServiceTests
             });
 
         var importService = new TaskImportService(
-            new EfTaskRepository(context), mockExternalClient.Object);
+            new EfTaskRepository(context),
+            mockExternalClient.Object,
+            NullLogger<TaskImportService>.Instance);
 
         var result = await importService.ImportAsync("user-facundo");
 
@@ -65,8 +68,11 @@ public class TaskImportServiceTests
             .ReturnsAsync(fakeExternalTasks);
 
         var currentUserId = "user-123-facundo";
+
         var importService = new TaskImportService(
-            new EfTaskRepository(context), mockExternalClient.Object);
+            new EfTaskRepository(context),
+            mockExternalClient.Object,
+            NullLogger<TaskImportService>.Instance);
 
         var result = await importService.ImportAsync(currentUserId);
 
@@ -102,7 +108,9 @@ public class TaskImportServiceTests
             .ReturnsAsync(fakeExternalTasks);
 
         var importService = new TaskImportService(
-            new EfTaskRepository(context), mockExternalClient.Object);
+            new EfTaskRepository(context),
+            mockExternalClient.Object,
+            NullLogger<TaskImportService>.Instance);
 
         var userId = "user-facundo";
 

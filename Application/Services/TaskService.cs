@@ -9,11 +9,13 @@ public class TaskService : ITaskService
 {
     private readonly ITaskRepository _taskRepository;
     private readonly ITaskImportService _taskImportService;
+    private readonly ILogger<TaskService> _logger;
 
-    public TaskService(ITaskRepository taskRepository, ITaskImportService taskImportService)
+    public TaskService(ITaskRepository taskRepository, ITaskImportService taskImportService, ILogger<TaskService> logger)
     {
         _taskRepository = taskRepository;
         _taskImportService = taskImportService;
+        _logger = logger;
     }
 
     public async Task<PagedResponse<TaskResponse>> GetTasksByUserIdAsync(
@@ -21,6 +23,9 @@ public class TaskService : ITaskService
     {
         page = page <= 0 ? 1 : page;
         pageSize = pageSize <= 0 ? 10 : pageSize;
+
+        _logger?.LogInformation("Obteniendo tareas para usuario {UserId} page={Page} pageSize={PageSize} completed={Completed} search={Search} from={FromDate} to={ToDate}",
+            userId, page, pageSize, completed, search, fromDate, toDate);
 
         var (tasks, totalRecords) = await _taskRepository.GetPagedByUserIdAsync(
             userId, page, pageSize, completed, search, fromDate, toDate);
@@ -32,6 +37,8 @@ public class TaskService : ITaskService
 
     public async Task<TaskResponse> CreateTaskAsync(CreateTaskRequest request, string userId)
     {
+        _logger?.LogInformation("Creando tarea para usuario {UserId} Title={Title}", userId, request.Title);
+
         var newTask = new TodoTask
         {
             Title = request.Title,
@@ -41,6 +48,8 @@ public class TaskService : ITaskService
 
         var savedTask = await _taskRepository.AddAsync(newTask);
 
+        _logger?.LogInformation("Tarea creada Id={TaskId} UserId={UserId}", savedTask.Id, userId);
+
         return TaskMapper.ToResponse(savedTask);
     }
 
@@ -48,8 +57,15 @@ public class TaskService : ITaskService
     {
         var task = await _taskRepository.FindByIdAsync(id);
 
-        if (task == null || task.UserId != userId)
+        if (task == null)
         {
+            _logger?.LogWarning("Intento de actualizar tarea inexistente Id={TaskId} por UserId={UserId}", id, userId);
+            return null;
+        }
+
+        if (task.UserId != userId)
+        {
+            _logger?.LogWarning("Usuario {UserId} no es dueño de la tarea Id={TaskId}", userId, id);
             return null;
         }
 
@@ -59,6 +75,8 @@ public class TaskService : ITaskService
 
         await _taskRepository.UpdateAsync(task);
 
+        _logger?.LogInformation("Tarea actualizada Id={TaskId} UserId={UserId}", id, userId);
+
         return TaskMapper.ToResponse(task);
     }
 
@@ -66,12 +84,21 @@ public class TaskService : ITaskService
     {
         var task = await _taskRepository.FindByIdAsync(id);
 
-        if (task == null || task.UserId != userId)
+        if (task == null)
         {
+            _logger?.LogWarning("Intento de eliminar tarea inexistente Id={TaskId} por UserId={UserId}", id, userId);
+            return false;
+        }
+
+        if (task.UserId != userId)
+        {
+            _logger?.LogWarning("Usuario {UserId} no es dueño de la tarea Id={TaskId} (eliminar)", userId, id);
             return false;
         }
 
         await _taskRepository.DeleteAsync(task);
+
+        _logger?.LogInformation("Tarea eliminada Id={TaskId} UserId={UserId}", id, userId);
 
         return true;
     }
