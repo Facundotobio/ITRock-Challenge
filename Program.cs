@@ -33,9 +33,12 @@ builder.Logging.AddDebug();
 // Nivel mínimo de captura
 builder.Logging.SetMinimumLevel(LogLevel.Information);
 
-// REGISTRO DE INFRAESTRUCTURA - Conexión a PostgreSQL
+// REGISTRO DE INFRAESTRUCTURA - Soporta appsettings local y variables de Render
+var connectionString = builder.Configuration["ConnectionStrings:DefaultConnection"]
+                    ?? builder.Configuration["ConnectionStrings__DefaultConnection"];
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connectionString));
 
 // BaseUrl (appsettings) + Polly
 builder.Services.AddHttpClient<IJsonPlaceholderClient, JsonPlaceholderClient>(client =>
@@ -161,6 +164,23 @@ app.UseAuthorization();
 // REGISTRO DE ENDPOINTS
 app.MapAuthEndpoints();
 app.MapTaskEndpoints();
+
+//MIGRACIONES AUTOMÁTICAS EN PRODUCCIÓN
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        // Esto ejecuta las migraciones pendientes en el Postgres de Render al iniciar
+        await context.Database.MigrateAsync();
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Ocurrió un error al aplicar las migraciones en la base de datos.");
+    }
+}
 
 app.Run();
 
