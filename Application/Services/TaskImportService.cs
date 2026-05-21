@@ -23,22 +23,34 @@ public class TaskImportService : ITaskImportService
     {
         var externalTasks = await _externalClient.GetTodosAsync();
 
-        var filteredTasks = externalTasks
+        var candidateTasks = externalTasks
             .Where(t => t.UserId == ExternalUserIdToImport)
             .Take(MaxTasksToImport)
             .ToList();
 
-        if (filteredTasks.Count == 0)
+        if (candidateTasks.Count == 0)
         {
             return new ImportResponse(0, Enumerable.Empty<TaskResponse>());
         }
 
-        var importedTasks = filteredTasks.Select(extTask => new TodoTask
+        var alreadyImportedIds = await _taskRepository.GetImportedExternalSourceIdsAsync(currentUserId);
+
+        var tasksToImport = candidateTasks
+            .Where(t => !alreadyImportedIds.Contains(t.Id))
+            .ToList();
+
+        if (tasksToImport.Count == 0)
+        {
+            return new ImportResponse(0, Enumerable.Empty<TaskResponse>());
+        }
+
+        var importedTasks = tasksToImport.Select(extTask => new TodoTask
         {
             Title = extTask.Title,
             Description = $"Importada externamente (External ID: {extTask.Id})",
             Completed = extTask.Completed,
-            UserId = currentUserId
+            UserId = currentUserId,
+            ExternalSourceId = extTask.Id
         }).ToList();
 
         await _taskRepository.AddRangeAsync(importedTasks);

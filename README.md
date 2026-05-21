@@ -4,31 +4,34 @@ API RESTful stateless para la gestión de tareas, construida bajo principios de 
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-## Respuestas HTTP Consistentes y Semánticas (Rúbrica: Manejo de Errores)
+## Seguridad y datos sensibles
 
-El sistema implementa una estrategia estricta de códigos de estado HTTP semánticos y consistentes:
+Este proyecto al ser un challenge técnico con credenciales de demostración intencionales no representa un modelo listo para producción sin endurecimiento adicional.
 
-- Login Exitoso (200 OK): Devuelve el token JWT estructurado.
-- Operación Exitosa (200 OK): Retorna los objetos DTO correspondientes.
-- Creación Exitosa (201 Created): Incluye la cabecera Location con la ruta de acceso al nuevo recurso.
-- Eliminación Exitosa (204 No Content): Confirmación semántica de eliminación sin cuerpo de respuesta.
-- Error de Validación de Entrada (400 Bad Request): Cumple con el estándar RFC 7807 (Problem Details) mediante Results.ValidationProblem, detallando qué campos fallaron (FluentValidation).
-- Token Ausente o Inválido (401 Unauthorized): Interceptado nativamente a nivel de middleware para proteger las rutas.
-- Recurso Inexistente o Sin Permisos (404 Not Found): Para evitar la fuga de información (Information Disclosure), si una tarea no existe o pertenece a otro usuario, la API responde unificado con 404 en lugar de 403.
-- Falla en la API Externa (502 Bad Gateway): Si la API externa de JSONPlaceholder falla, se captura mediante un bloque defensivo try-catch y se retorna un código semántico que deslinda la responsabilidad del servidor local.
+## Qué es deliberado del enunciado (no es una fuga accidental)
+
+| Elemento                                               | Ubicación                             | Motivo                            |
+=====================================================================================================================================
+| Usuario `admin` / contraseña `password123`             | `AuthService`, README, Postman        | Requisito funcional del challenge |
+| `userId` fijo `"1"` en el JWT del admin | `AuthService`| Permite probar la importación externa |
+| Credenciales en ejemplos `curl` y colección Postman    | Documentación                         | Facilitar evaluación local        |
+
+## Antes de desplegar a un entorno real
+
+Cambiar obligatoriamente: clave JWT, credenciales de base de datos, usuario/contraseña de login (o integrar un proveedor de identidad), y restringir Swagger a entornos de desarrollo si aplica.
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ## Decisiones Técnicas
 
-1. Estructura en Capas Transversales (Clean Architecture Modificada):
-   - Domain: Contiene la entidad pura TodoTask, totalmente aislada de frameworks externos.
-   - Application: Orquesta la lógica de negocio a través de interfaces, DTOs inmutables (records) y validadores independientes.
-   - Infrastructure: Resuelve el acceso a datos (ApplicationDbContext con EF Core mapeado a PostgreSQL) y las comunicaciones externas (JsonPlaceholderClient), manteniendo el núcleo del sistema limpio.
-   - Presentation: Expone los endpoints modulares de forma desacoplada mediante métodos de extensión.
+1. Estructura en Capas 
+   - Domain
+   - Application
+   - Infrastructure
+   - Presentation
 
-2. Minimal APIs sobre Controladores Tradicionales:
-   Se seleccionaron las Minimal APIs de .NET 8 debido a su rendimiento superior (menor sobrecarga de asignaciones en memoria), menor código de infraestructura repetitivo (boilerplate) y alineación perfecta con despliegues cloud-native.
+2. Minimal APIs:
+   Se seleccionaron las Minimal APIs de .NET 8 debido a su rendimiento, menor código de infraestructura repetitivo y alineación perfecta con despliegues cloud-native.
 
 3. Uso de IHttpClientFactory para la Integración Externa:
    En lugar de instanciar HttpClient manualmente (lo cual provoca el error de infraestructura Socket Exhaustion), se inyectó la factoría nativa de .NET para centralizar el ciclo de vida de las conexiones salientes.
@@ -36,9 +39,37 @@ El sistema implementa una estrategia estricta de códigos de estado HTTP semánt
 4. Validación Desacoplada con FluentValidation y Endpoint Filters:
    Se utilizó FluentValidation en lugar de Data Annotations para mantener las reglas de validación fuera de los DTOs (Solid: Principio de Responsabilidad Única). Estas reglas se ejecutan de manera automática mediante un IEndpointFilter genérico que intercepta las peticiones antes de que toquen la lógica de negocio.
 
-5. Resiliencia Avanzada con Polly (Microsoft.Extensions.Http.Resilience):
-   Se acopló Polly al pipeline de comunicaciones del cliente HTTP saliente. Se configuró el manejador estándar de resiliencia de .NET 8, el cual dota a la API de estrategias automáticas de Reintentos con Retroceso Exponencial (Exponential Backoff) y Disyuntor (Circuit Breaker).
-   Esto garantiza que la aplicación sea tolerante a fallos transitorios de red con proveedores externos sin interrumpir la experiencia del usuario.
+5. Cliente HTTP tipado para la integración externa (IHttpClientFactory + Polly):
+   Se usa un único `AddHttpClient<IJsonPlaceholderClient, JsonPlaceholderClient>`: el `HttpClient` tipado se inyecta en `JsonPlaceholderClient`, evitando Socket Exhaustion y garantizando que Polly y la configuración apliquen al mismo pipeline.
+   Se aplicaron reintentos con retroceso exponencial y circuit breaker. Si la API externa falla tras agotar los reintentos, `GlobalExceptionHandler` traduce `HttpRequestException` / `TaskCanceledException` en `502 Bad Gateway`.
+
+6. Importación idempotente
+    - Solo considera tareas externas con `userId == 1` (requisito del challenge).
+    - Toma como máximo **5** candidatas.
+    - Si el usuario ya importó una tarea con el mismo `ExternalSourceId`, **se omite** en llamadas posteriores.
+    - Una segunda importación sin tareas nuevas devuelve `importedCount: 0`.
+
+7. Persistencia con EF Core + PostgreSQL (Code First):
+   `ApplicationDbContext` mapea la entidad `TodoTask` a PostgreSQL. El esquema se versiona con migraciones en `/Migrations` (`dotnet ef database update`).
+
+8. Autenticación y autorización con JWT:
+    Login en `/api/v1/auth/login` genera un token Bearer (`ITokenService`). Los endpoints de tareas exigen `RequireAuthorization()`; el `userId` se obtiene del claim `NameIdentifier`.
+
+9. Versionado de API en la URL:
+    `Asp.Versioning` expone rutas `/api/v{version}/...` (v1 por defecto). Swagger genera documentación por versión.
+
+10. Versionado de ensamblado (deploy):
+    `Version.props` define `Version`, `AssemblyVersion` y `FileVersion`, importado por `ITRockChallenge.csproj` para trazabilidad del binario desplegado.
+
+11. Documentación interactiva con Swagger:
+    Para probar endpoints desde la UI.
+
+12. Manejo global de errores:
+    `GlobalExceptionHandler` (`IExceptionHandler`) centraliza fallos no controlados.
+
+13. Pruebas con xUnit:
+    Tests con Moq: unitarios (`TaskService`, `TaskImportService`, `TokenService`) y de integración HTTP (`WebApplicationFactory` en endpoints de auth y tasks).
+
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ## Instrucciones de Instalación y Ejecución Local
@@ -70,9 +101,35 @@ La API levantará en el puerto configurado en tu archivo launchSettings.json, po
 
 ## Ejecución Alternativa mediante Docker (Entorno Aislado)
 
-Si dispones de Docker instalado, puedes omitir la configuración local de la base de datos y compilar todo el ecosistema de la API y PostgreSQL en contenedores aislados ejecutando el siguiente comando en la raíz del proyecto:
+Si dispones de Docker instalado, puedes omitir la configuración local de la base de datos y compilar todo el ecosistema de la API y PostgreSQL en contenedores aislados.
 
+### Configuración del archivo `.env`
+
+En la raíz del proyecto creá un archivo `.env`. `docker-compose.yml` lo consume para PostgreSQL, JWT y la URL de JSONPlaceholder.
+
+Ejemplo:
+
+```env
+DB_USER=postgres
+DB_PASSWORD=tu_password_seguro
+DB_NAME=ITRockChallengeDB
+JWT_SECRET_KEY=clave_jwt_de_al_menos_32_caracteres_para_firma_hmac
+JSON_PLACEHOLDER_BASE_URL=URL_DE_JSONPLACEHOLDER
+```
+
+| Variable                    | Uso en Docker                                                                     |
+==================================================================================================================
+| `DB_USER`                   | Usuario de PostgreSQL (`POSTGRES_USER`)                                           |
+| `DB_PASSWORD`               | Contraseña de PostgreSQL (`POSTGRES_PASSWORD`)                                    |
+| `DB_NAME`                   | Nombre de la base (`POSTGRES_DB` y `Database=` en la connection string de la API) |
+| `JWT_SECRET_KEY`            | Firma del token (`Jwt__Key` en la API)                                            |
+| `JSON_PLACEHOLDER_BASE_URL` | URL base del cliente externo (`JsonPlaceholderSettings__BaseUrl`).                |
+
+Luego, en la raíz del proyecto:
+
+```bash
 docker-compose up --build
+```
 
 Comandos Útiles de Mantenimiento y Resolución de Problemas
 En caso de realizar modificaciones en el código fuente de C#, actualizar dependencias o experimentar problemas con la caché de compilación, utiliza los siguientes comandos:
@@ -132,7 +189,7 @@ curl -X POST https://localhost:7271/api/v1/tasks/import -H "Authorization: Beare
 ## Pruebas de Integración (Insomnia / Postman)
 
 Para facilitar la evaluación y auditoría de los endpoints expuestos en producción, se ha adjuntado una colección de pruebas lista para usar en la raíz del proyecto: 
-`ITRockChallenge_Insomnia_Collection.json`
+`ITRockChallenge.postman_collection.json.`
 
 Esta colección cuenta con variables globales de entorno y encadenamiento automatizado de tokens de autenticación.
 
@@ -141,7 +198,7 @@ Esta colección cuenta con variables globales de entorno y encadenamiento automa
 1. **Importar el archivo:**
    * Abrí **Insomnia** (o Postman).
    * Hacé clic en el botón de **Import** (o *Preferences > Data > Import Data*).
-   * Seleccioná el archivo `ITRockChallenge_Insomnia_Collection.json` de la raíz del proyecto.
+   * Seleccioná el archivo `ITRockChallenge.postman_collection.json.` de la raíz del proyecto.
 
 2. **Configurar el Entorno (Environment):**
    * Al importar, se creará el entorno base automáticamente. Asegurate de que la variable `base_url` apunte correctamente a nuestro servicio web en producción:
@@ -152,9 +209,9 @@ Esta colección cuenta con variables globales de entorno y encadenamiento automa
       Al recibir la respuesta `200 OK`, un tag dinámico capturará el token JWT de forma automática.
    * **Paso 2 - CRUD (`2. Tasks CRUD`):** Ya podés ejecutar los endpoints de obtener, crear, actualizar o borrar tareas. No es necesario copiar y pegar el token a mano;
       viajará inyectado transparentemente como cabecera `Bearer` gracias al tag dinámico.
-   * **Paso 3 - Integración Externa (`3. External Integration`):** Ejecutá el endpoint de importación (`POST Import External Tasks`).
+     * **Paso 3 - Integración Externa (`3. External Integration`):** Ejecutá el endpoint de importación (`POST Import External Tasks`).
       Este servicio se comunicará con la API externa de JSONPlaceholder de forma invisible, procesará las primeras 5 tareas y las guardará en la base de datos PostgreSQL de producción. 
-      Podés verificar el impacto volviendo a ejecutar el listado completo de tareas.
+      Podés verificar el impacto volviendo a ejecutar el listado completo de tareas. En llamadas posteriores solo importa tareas externas que el usuario aún no tiene (idempotencia).
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -226,9 +283,9 @@ Centralización de Fallas: Cualquier excepción no controlada en la capa de serv
 Respuestas Estandarizadas: El cliente/frontend nunca recibe un error crudo ni el *stack trace* expuesto.
 Mapeo de Errores de Infraestructura: Si la API de terceros falla y la política de resiliencia de Polly agota sus reintentos, el manejador captura las excepciones de red (`HttpRequestException` / `TaskCanceledException`) y las traduce automáticamente en un código `502 Bad Gateway` con un mensaje controlado, previniendo la caída del servidor.
 
-## Pruebas Unitarias con xUnit
+## Pruebas Unitarias y de Integración con xUnit
 
-El proyecto cuenta con 23 pruebas unitarias que cubren la lógica de negocio, la persistencia de datos y el comportamiento de los endpoints de la API.
+El proyecto cuenta con pruebas unitarias y de integración que cubren la lógica de negocio, la persistencia de datos y el comportamiento de los endpoints de la API.
 
 ## Cómo Ejecutar las Pruebas
 

@@ -22,4 +22,6 @@ public interface ITaskRepository
     Task DeleteAsync(TodoTask task);
 
     Task AddRangeAsync(IEnumerable<TodoTask> tasks);
+
+    Task<HashSet<int>> GetImportedExternalSourceIdsAsync(string userId);
 }

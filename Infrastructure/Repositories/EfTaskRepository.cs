@@ -87,4 +87,14 @@ public class EfTaskRepository : ITaskRepository
         _context.Tasks.AddRange(tasks);
         await _context.SaveChangesAsync();
     }
+
+    public async Task<HashSet<int>> GetImportedExternalSourceIdsAsync(string userId)
+    {
+        var ids = await _context.Tasks
+            .Where(t => t.UserId == userId && t.ExternalSourceId != null)
+            .Select(t => t.ExternalSourceId!.Value)
+            .ToListAsync();
+
+        return ids.ToHashSet();
+    }
 }

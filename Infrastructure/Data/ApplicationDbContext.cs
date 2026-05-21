@@ -16,7 +16,12 @@ namespace ITRockChallenge.Infrastructure.Data
             base.OnModelCreating(modelBuilder);
 
             // Configuraciones adicionales si hiciesen falta en el futuro
-            modelBuilder.Entity<TodoTask>().HasIndex(t => t.UserId); // Indexa por UserId para búsquedas eficientes
+            modelBuilder.Entity<TodoTask>().HasIndex(t => t.UserId);
+
+            modelBuilder.Entity<TodoTask>()
+                .HasIndex(t => new { t.UserId, t.ExternalSourceId })
+                .IsUnique()
+                .HasFilter("\"ExternalSourceId\" IS NOT NULL");
         }
     }
 }

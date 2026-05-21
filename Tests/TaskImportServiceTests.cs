@@ -81,4 +81,36 @@ public class TaskImportServiceTests
         Assert.Equal(5, tasksInDb.Count);
         Assert.StartsWith("Importada externamente (External ID: 101)", tasksInDb.First().Description);
     }
+
+    [Fact]
+    public async Task ImportAsync_WhenCalledTwice_IsIdempotentAndDoesNotDuplicateTasks()
+    {
+        using var context = new ApplicationDbContext(
+            new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseInMemoryDatabase(databaseName: $"Test_Import_Idempotent_{Guid.NewGuid()}")
+                .Options);
+
+        var fakeExternalTasks = new List<ExternalTaskDto>
+        {
+            new(1, 101, "Tarea 1", false),
+            new(1, 102, "Tarea 2", true)
+        };
+
+        var mockExternalClient = new Mock<IJsonPlaceholderClient>();
+        mockExternalClient
+            .Setup(client => client.GetTodosAsync())
+            .ReturnsAsync(fakeExternalTasks);
+
+        var importService = new TaskImportService(
+            new EfTaskRepository(context), mockExternalClient.Object);
+
+        var userId = "user-facundo";
+
+        var firstImport = await importService.ImportAsync(userId);
+        var secondImport = await importService.ImportAsync(userId);
+
+        Assert.Equal(2, firstImport.ImportedCount);
+        Assert.Equal(0, secondImport.ImportedCount);
+        Assert.Equal(2, await context.Tasks.CountAsync(t => t.UserId == userId));
+    }
 }

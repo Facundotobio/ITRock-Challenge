@@ -209,7 +209,7 @@ namespace ITRockChallenge.Tests
             // Validar que devuelva 201
             Assert.Equal(HttpStatusCode.Created, response.StatusCode);
             Assert.NotNull(response.Headers.Location);
-            Assert.Contains($"/tasks/{newTaskId}", response.Headers.Location.ToString());
+            Assert.Contains($"/api/v1/tasks/{newTaskId}", response.Headers.Location.ToString());
 
             // Validar el cuerpo de la respuesta
             var taskResult = await response.Content.ReadFromJsonAsync<TaskResponse>();
@@ -268,10 +268,10 @@ namespace ITRockChallenge.Tests
             // Verificar que devuelva 404
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-            var jsonResponse = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
-            Assert.NotNull(jsonResponse);
-            Assert.True(jsonResponse.ContainsKey("message"));
-            Assert.Equal("Tarea no encontrada o no tiene permisos.", jsonResponse["message"]);
+            var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+            Assert.NotNull(problem);
+            Assert.Equal(404, problem.Status);
+            Assert.Equal("Tarea no encontrada o no tiene permisos.", problem.Detail);
         }
 
         [Fact]
@@ -325,11 +325,10 @@ namespace ITRockChallenge.Tests
             // Verificar que devuelva el código 404
             Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-            // Validar que el JSON contenga el texto exacto
-            var jsonResponse = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
-            Assert.NotNull(jsonResponse);
-            Assert.True(jsonResponse.ContainsKey("message"));
-            Assert.Equal("Tarea no encontrada o no tiene permisos.", jsonResponse["message"]);
+            var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+            Assert.NotNull(problem);
+            Assert.Equal(404, problem.Status);
+            Assert.Equal("Tarea no encontrada o no tiene permisos.", problem.Detail);
         }
 
         [Fact]

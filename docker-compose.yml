@@ -30,6 +30,7 @@ services:
       - Jwt__Issuer=ITRockChallengeAPI
       - Jwt__Audience=ITRockChallengeUsers
       - Jwt__ExpiryInMinutes=60
+      - JsonPlaceholderSettings__BaseUrl=${JSON_PLACEHOLDER_BASE_URL:-https://jsonplaceholder.typicode.com}
     depends_on:
       - postgres_db
     networks:
